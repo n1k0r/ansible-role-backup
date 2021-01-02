@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+function rclone_auth {
+    rclone \
+{% for arg in backup.target.args %}
+        --{{ arg }}={{ backup.target.args[arg] }} \
+{% endfor %}
+        $@
+}
+
+function filename {
+    echo :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1/$(date -Iseconds --utc)
+}
+
+function send {
+    rclone_auth copy \
+        --create-empty-src-dirs \
+        --local-no-check-updated \
+        --progress \
+        $1 \
+        $(filename $2)
+}
+
+function send_arch {
+    tar cpzf - $1 | \
+    rclone_auth rcat \
+        --progress \
+        $(filename $2).tar.gz
+}
+
+function clear {
+    rclone_auth delete --min-age $2 :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1
+    rclone_auth rmdir --min-age $2 :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1
+}
+
+{% for dir in backup.dirs %}
+clear {{ dir.dest }} {{ dir.max_age }}
+
+{% if "compress" in dir and dir.compress %}
+send_arch {{ dir.src }} {{ dir.dest }}
+{% else %}
+send {{ dir.src }} {{ dir.dest }}
+{% endif %}
+
+{% endfor %}

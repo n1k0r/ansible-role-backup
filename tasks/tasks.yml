@@ -1,0 +1,42 @@
+- name: Install requirements
+  package:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - cron
+      - gnupg-agent
+    state: present
+
+- name: Add repo GPG key for Rclone
+  apt_key:
+    url: https://azlux.fr/repo.gpg.key
+    state: present
+
+- name: Add repository for Rclone
+  apt_repository:
+    repo: deb https://packages.azlux.fr/debian/ buster main
+    state: present
+    update_cache: yes
+
+- name: Install Rclone
+  package:
+    name: rclone
+    state: present
+
+- name: Template script
+  template:
+    src: backup.sh.j2
+    dest: /etc/backup.sh
+    mode: "0700"
+  notify: Backup
+
+- name: Set crontab for backup
+  cron:
+    name: "backup"
+    user: root
+    minute: "{{ backup.schedule.minute }} "
+    hour: "{{ backup.schedule.hour }} "
+    day: "{{ backup.schedule.day }} "
+    weekday: "{{ backup.schedule.weekday }} "
+    month: "{{ backup.schedule.month }} "
+    job: "/bin/bash /etc/backup.sh > /dev/null 2>&1"

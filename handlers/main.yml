@@ -1,0 +1,3 @@
+- name: Backup
+  command: /etc/backup.sh
+  become: yes
