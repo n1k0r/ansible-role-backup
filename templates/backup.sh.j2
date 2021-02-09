@@ -13,12 +13,16 @@ function filename {
 }
 
 function send {
+    DSTDIR=$(filename $2)
+
     rclone_auth copy \
         --create-empty-src-dirs \
         --local-no-check-updated \
         --progress \
         $1 \
-        $(filename $2)
+        $DSTDIR
+
+    rclone_auth touch $DSTDIR/$(basename $1)
 }
 
 function send_arch {
