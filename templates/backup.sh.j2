@@ -12,24 +12,19 @@ function filename {
     echo :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1/$(date -Iseconds --utc)
 }
 
-function send {
-    DSTDIR=$(filename $2)
-
-    rclone_auth copy \
-        --create-empty-src-dirs \
-        --local-no-check-updated \
+function rcat {
+    tar -cf $3 - $1 | \
+    rclone_auth rcat \
         --progress \
-        $1 \
-        $DSTDIR
+        $(filename $2)$4
+}
 
-    rclone_auth touch $DSTDIR/$(basename $1)
+function send {
+    rcat $1 $2 "" .tar
 }
 
 function send_arch {
-    tar cpzf - $1 | \
-    rclone_auth rcat \
-        --progress \
-        $(filename $2).tar.gz
+    rcat $1 $2 -z .tgz
 }
 
 function clear {
