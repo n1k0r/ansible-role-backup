@@ -12,19 +12,11 @@ function filename {
     echo :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1/$(date -Iseconds --utc)
 }
 
-function rcat {
-    tar $3 -cf - $1 | \
+function send {
+    tar $4 -cf - $1 | \
     rclone_auth rcat \
         --progress \
-        $(filename $2)$4
-}
-
-function send {
-    rcat $1 $2 "" .tar
-}
-
-function send_arch {
-    rcat $1 $2 -z .tgz
+        $(filename $2)$3
 }
 
 function clear {
@@ -33,12 +25,10 @@ function clear {
 }
 
 {% for dir in backup.dirs %}
-clear {{ dir.dest }} {{ dir.max_age }}
-
-{% if "compress" in dir and dir.compress %}
-send_arch {{ dir.src }} {{ dir.dest }}
-{% else %}
-send {{ dir.src }} {{ dir.dest }}
-{% endif %}
+clear {{ dir.dest | quote }} {{ dir.max_age | quote }}
+send {{ dir.src | quote }} {{ dir.dest | quote }} {{ dir.compress | default(false) | ternary(".tgz", ".tar") }} {{(
+    dir.compress | default(false) | ternary("-z ", "") +
+    dir.exclude | default([]) | map("regex_replace", "^", "--exclude ") | join(" ")
+) | quote }}
 
 {% endfor %}

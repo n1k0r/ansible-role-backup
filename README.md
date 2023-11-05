@@ -21,6 +21,7 @@ backup:
 
   dirs:
     - src: "{{ services_path }}/app/data/"
+      exclude: [ backups, "*.log" ]
       dest: app
       max_age: 10d
 
