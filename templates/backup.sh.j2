@@ -8,27 +8,50 @@ function rclone_auth {
         $@
 }
 
-function filename {
-    echo :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1/$(date -Iseconds --utc)
+function rcat {
+    rclone_auth rcat --progress "$1"
 }
 
-function send {
-    tar $4 -cf - $1 | \
-    rclone_auth rcat \
-        --progress \
-        $(filename $2)$3
-}
+function backup {
+    name=$1
+    maxage=$2
+    method=$3
 
-function clear {
-    rclone_auth delete --min-age $2 :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1
-    rclone_auth rmdir --min-age $2 :{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$1
+    dir=":{{ backup.target.type }}:{{ backup.target.prefix }}$(hostname)/$name"
+    dest="$dir/$(date -Iseconds --utc)"
+
+    rclone_auth delete --min-age "$maxage" "$dir"
+    rclone_auth rmdir --min-age "$maxage" "$dir"
+
+    echo "Sending $name in $destc"
+
+    case $method in
+    files)
+        local src=$4
+        tar -cf - $src | rcat "$dest.tar" ;;
+    files_compressed)
+        local src=$4
+        tar -czf - $src | rcat "$dest.tgz" ;;
+    stdout)
+        local script=$4
+        bash -c "$script" | rcat "$dest" ;;
+    *)
+        >&2 echo "Unknown backup method: $method"
+        exit 1 ;;
+    esac
 }
 
 {% for dir in backup.dirs %}
-clear {{ dir.dest | quote }} {{ dir.max_age | quote }}
-send {{ dir.src | quote }} {{ dir.dest | quote }} {{ dir.compress | default(false) | ternary(".tgz", ".tar") }} {{(
-    dir.compress | default(false) | ternary("-z ", "") +
-    dir.exclude | default([]) | map("regex_replace", "^", "--exclude ") | join(" ")
-) | quote }}
+backup {{ dir.dest }} {{ dir.max_age }} {% if dir.src is string -%}
+    {% if dir.compress | default(False) -%}
+    files_compressed {{ dir.src }}
+    {%- else -%}
+    files {{ dir.src }}
+    {%- endif %}
+{% else -%}
+    {% if "execute" in dir.src -%}
+    stdout {{ dir.src.execute | quote }}
+    {%- endif %}
+{% endif %}
 
 {% endfor %}
