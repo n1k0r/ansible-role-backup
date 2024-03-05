@@ -23,7 +23,7 @@ function backup {
     rclone_auth delete --min-age "$maxage" "$dir"
     rclone_auth rmdir --min-age "$maxage" "$dir"
 
-    echo "Sending $name in $destc"
+    echo "Sending $name in $dest"
 
     case $method in
     files)
