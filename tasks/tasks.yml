@@ -7,16 +7,17 @@
       - gnupg-agent
     state: present
 
-- name: Add repo GPG key for Rclone
-  apt_key:
-    url: https://azlux.fr/repo.gpg.key
-    state: present
+- name: Add Azlux repository
+  deb822_repository:
+    name: azlux
+    uris: https://packages.azlux.fr/debian/
+    suites: "{{ ansible_distribution_release }}"
+    components: main
+    signed_by: https://azlux.fr/repo.gpg.key
+  notify: Update apt cache
 
-- name: Add repository for Rclone
-  apt_repository:
-    repo: deb https://packages.azlux.fr/debian/ buster main
-    state: present
-    update_cache: yes
+- name: Fetch Azlux repository
+  meta: flush_handlers
 
 - name: Install Rclone
   package:
